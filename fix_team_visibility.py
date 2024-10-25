@@ -62,13 +62,14 @@ class Command(BaseCommand):
             query_filter = ('pk', options['team_id_filter'])
         
         team_list_to_consider = Team.objects.filter(query_filter)
-        print(f'Will now inspect {team_list_to_consider.count()} teams (out of {Team.objects.count()} teams)')
 
         # Build list of affected teams
         affected_teams = [ t for t in team_list_to_consider if self.team_is_affected(t) ]
 
+        print(f'Will now inspect {team_list_to_consider.count()} teams (out of {Team.objects.count()} teams)')
+        print('Affected team list:')
         for team in affected_teams:
-            print(f'Team {team.name} is affected.')
+            print(f'- (ID {team.pk:>3}) "{team.name}" from org "{team.organization.name}"')
             if self.debug_enabled:
                 self.show_affected_team(team)
             if options['not_just_checking']:
@@ -79,10 +80,13 @@ class Command(BaseCommand):
                 except Exception as e:
                     print('Unable to fix.')
                     raise e
-            else:
-                print('Re-run with --fix if you want me to fix it.')
         if len(affected_teams) == 0:
             print('No team is affected.')
+        elif not options['not_just_checking']:
+            # yay double negative! \o/
+            print('\nTIP: Re-run with --fix if you want me to fix these affected teams.')
+            print('TIP2: Re-run with --fix --id XYZ if you want me to fix _only_ team ID XYZ.')
+            
 
         # Make sure we give back the prompt with a new line.
         print()

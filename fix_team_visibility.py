@@ -18,6 +18,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--fix', action='store_true', dest='not_just_checking', default=False, help='Not just show what is wrong but actually FIX it.')
+        parser.add_argument('--team-id', '--id', action='store', dest='team_id_filter', type=int, default=0, help='Work ONLY on this particular Team ID.')
         parser.add_argument('--debug', '-d', action='store_true', dest='debug_enabled', default=False, help='Enable debug-level output.')
 
     def print_debug(self, message):
@@ -48,13 +49,23 @@ class Command(BaseCommand):
         """
         return not team.read_role.parents.contains(team.member_role)
 
-
     def handle(self, *args, **options):
         self.debug_enabled = options['debug_enabled']
-        print(f'Will now inspect {Team.objects.count()} teams')
+
+        # Build list of teams to inspect considering the team_id_filter if it was passed by the user.
+        # NOTE: filters are encoded as 2-tuples, 'pk=5' becomes ('pk', 5) and 'pk__gt=99' becomes ('pk__gt', 99).
+        if options['team_id_filter'] == 0:
+            # No filter was passed, use a catch-all filter i.e. 'pk__gt=0'.
+            query_filter = ('pk__gt', '0')
+        else:
+            # Set up a filter.
+            query_filter = ('pk', options['team_id_filter'])
+        
+        team_list_to_consider = Team.objects.filter(query_filter)
+        print(f'Will now inspect {team_list_to_consider.count()} teams (out of {Team.objects.count()} teams)')
 
         # Build list of affected teams
-        affected_teams = [ t for t in Team.objects.all() if self.team_is_affected(t) ]
+        affected_teams = [ t for t in team_list_to_consider if self.team_is_affected(t) ]
 
         for team in affected_teams:
             print(f'Team {team.name} is affected.')
